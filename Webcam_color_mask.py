@@ -12,17 +12,50 @@ myColors = [[5,107,0,19,225,225],
             [133,56,0,159,159,255],
             [57,76,0,100,255,255]]
 
-def findColor(img,myColors):
+myColorValues = [[51,153,255],
+                [255,0,255],
+                [0,255,0]]
+
+def findColor(img,myColors,myColorValues):
     imgHSV = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+    count = 0
     for color in myColors:
         lower = np.array(color[0:3])
         upper = np.array(color[3:6])
         mask = cv2.inRange(imgHSV,lower,upper)
-        cv2.imshow(str(color[0]),mask)
+        x,y=getContour(mask)
+        cv2.circle(imgResult,(x,y),10,myColorValues[count],cv2.FILLED)
+        count += 1
+        # cv2.imshow(str(color[0]),mask)
+
+
+def getContour(img):
+    contours,hierarchy = cv2.findContours(img,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+    x,y,w,h = 0,0,0,0
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area>500: #removes noise
+            cv2.drawContours(imgResult,cnt,-1,(255,0,255),3)  #on what frame, contour,index,colour,thickness
+            per1 = cv2.arcLength(cnt,True) # contour, is it closed
+            approx = cv2.approxPolyDP(cnt,0.02*per1,True)   # approximate the corner poitns
+            objCor = len(approx)
+            if objCor == 3:
+                objectType = "Triangle"
+            elif objCor == 4: 
+                aspectratio = w/float(h)
+                if aspectratio > 0.9 and aspectratio < 1.1: 
+                    objectType = "Square"
+                else: 
+                    objectType = "Rectangle"
+            else: 
+                objectType = "Ciricle"
+            x,y,w,h = cv2.boundingRect(approx)
+    return x+w//2,y
 
 while True:
     success, img = cap.read()
-    findColor(img, myColors)
-    cv2.imshow("Result",img)
+    imgResult = img.copy()
+    findColor(img, myColors,myColorValues)
+    cv2.imshow("Result",imgResult)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
